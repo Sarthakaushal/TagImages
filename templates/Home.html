@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+
+{% block photoList %}
+{% for photo in data.fileNames %}
+<!-- <script>
+    console.log(data)
+    alert(""+String(data.fileNames[0]))
+</script>
+<div class="row rowItem" onclick="Test1();">
+    Image Name : {{photo}}
+    <input type="hidden" value="{{photo}}">
+</div> -->
+{% endfor %}
+{% endblock %}

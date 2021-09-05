@@ -1,0 +1,64 @@
+#navbar{
+    background: black;
+    color: white;
+    font-size: xxx-large;
+    display: inherit;
+}
+
+.rowItem{
+    display: block;
+    width: 100%;
+    margin: 0px 30px;
+    margin-bottom: 1px grey solid;
+}
+
+.highlight:hover{
+    background-color: rgb(193, 227, 233);
+    cursor: pointer;
+}
+
+.text-center{
+    text-align: center;
+    padding:5px
+}
+
+.danger:hover{
+    color: red;
+    cursor: pointer;
+}
+#uploadImage{
+    margin: 0px 10px;
+    width: 100%;
+}
+
+.content-border{
+    border-right: 1px solid black;
+    border-bottom: 1px solid black;
+    min-height: 90vh;
+}
+
+h4{
+    font-size: 1.5rem;
+    padding-top: 15px;
+    padding-bottom: 10px;
+    /* text-align: center; */
+    background-color: lightsteelblue;
+}
+
+canvas{
+    width: 100%;
+    margin-top: 20px;
+    border: 1px solid;
+    cursor: crosshair;
+}
+i {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+.bbSubmit{
+    display: block;
+    text-align: center;
+    border-top: 1px #80808091 solid;
+    padding-top: 2vh;
+}

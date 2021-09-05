@@ -1,0 +1,425 @@
+<!doctype html>
+<html>
+<head> 
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <!-- Custom StyleSheet  -->
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}" >
+    <script src="https://kit.fontawesome.com/33d7f3e5ed.js" crossorigin="anonymous"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <title>Upload</title>
+</head>  
+<body onload="CreateList();">
+    <div>
+        <!-- Navbar Banner -->
+        <div id="navbar" class="row text-center"><span></span>Annotation Tool</div>
+        <!-- Content -->
+        <div class="row">
+            <!-- Upload and List Area -->
+            <div class="col-sm-3 content-border" id='listPhotos' style="padding-right: 0px;">
+                <h4><i class="fas fa-file-upload"></i>Upload Image</h4>
+                <div class="row" style="text-align: center;width: 100%;">
+                    <!-- <div class="row" -->
+                        <!-- <span style="text-align: center;width: 100%;"> -->
+                            
+                        <!-- </span> -->
+                    <!-- </div> -->
+                    <form id="uploadImage" action = "/success" method = "post" enctype="multipart/form-data" style="margin-top: 20px;">  
+                        <input type="file" accept="image/*"  name="file" onchange="preview_image(event)" required/>  
+                        <input type = "submit" value="Upload">  
+                    </form> 
+                </div>
+                <h4 style="border-top: 1px black solid; margin-top: 20px;"><i class="fas fa-folder-open "></i>Files Availible</h4>
+                <div class="row" id="photoList">
+                    {% block photoList %}{% endblock %}
+                    d returns the first element that m    </div>
+            </div>
+            <!-- Canvas Draw Area -->
+            <div  class="col-sm-6 content-border">
+                <!-- Photo Preview Area -->
+                <canvas class="canvas" id="canvas" style="width: 100%;">
+                    <p>Add suitable fallback here.</p>
+                </canvas>
+            </div>
+            <!-- View BB Points Area -->
+            <div class="col-sm-3 content-border" style="border-right: none;padding-right: 0px;">
+                <div class="row" style="width: 104%;">
+                    <h4 style="width: 100%;"><i class="far fa-square"></i>Bouding Box List</h4>
+                </div>
+                <div id="bbList" class="row" style="margin-left: 0%;max-height: 53vw;overflow-y: scroll;">                </div>
+                <div id='submit'></div>                
+            </div>
+        </div>
+    </div>
+    <script type='text/javascript'>
+
+        var ratio = null;
+        var notPlottedPoint = []
+        var polygonList = []
+        var dpi = window.devicePixelRatio;
+        var currFile = null;
+        var incomplete = true;
+        var metaImage ={'h':null,'w':null}
+        var savedChanges = true;
+
+        // Load Image on Canvas
+        function loadImage(fileName,index) {
+            if (!savedChanges){
+                if (!(confirm('Do want to load the next image without saving changes to current image?'))){
+                    return true
+                }else{
+                    savedChanges = true
+                }
+            }
+            var canvas = document.getElementById("canvas");
+            var ctx = canvas.getContext("2d");
+            var img = new Image();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('bbList').innerHTML='';
+            notPlottedPoint =[];
+            polygonList = [];
+            img.onload = function () {
+                // set size proportional to image
+                canvas.height = canvas.width * (img.height / img.width);
+                canvas.height *= dpi
+                canvas.width *= dpi
+                metaImage.h = img.height
+                metaImage.w = img.width
+
+                // step 1 - resize to 50%
+                var oc = document.createElement('canvas'),
+                    octx = oc.getContext('2d');
+
+                oc.width = img.width * 0.5;
+                oc.height = img.height * 0.5;
+                ratio = .25
+
+                octx.drawImage(img, 0, 0, oc.width, oc.height);
+
+                // step 2
+                octx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5);
+
+                // step 3, resize to final size
+                ctx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5,
+                0, 0, canvas.width, canvas.height);
+                if(data.labels[index]!=''){
+                    draw_populate_poly(index)
+                }
+            }
+            img.src = 'static/'+fileName;
+            currFile = fileName;
+        }
+        //Draw polygon and populate the polygon list
+        function draw_populate_poly(index){
+            var _data = JSON.parse(data.labels[index]);
+            console.log(_data.length,_data)
+            len = _data.length;
+            for(_p=0; _p<len ;_p++){
+                console.log(_p)
+                console.log(_data[_p])
+                draw_poly(_data[_p].pointList,_data[_p].scale, _data[_p].label, _p);
+            }
+            // console.log(_data)
+        }
+        function draw_poly(pointlist,scale_recorded,bb_label,lbl_index){
+            var canvas = document.getElementById("canvas");
+            var b = canvas.getBoundingClientRect();
+            var scale = canvas.width / parseFloat(b.width);
+            var color = getRandomColor()
+            //List containing list of coordinates
+            for(p=0;p< pointlist.length;p++){
+                // console.log(pointlist[p].x, pointlist[p].y)
+                drawCoordinates(pointlist[p].x, pointlist[p].y)
+                if (notPlottedPoint.length>1){
+                    var ctx = document.getElementById("canvas").getContext("2d");
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.moveTo(notPlottedPoint[notPlottedPoint.length -2].x*scale ,notPlottedPoint[notPlottedPoint.length -2].y*scale);
+                    ctx.lineTo(notPlottedPoint[notPlottedPoint.length -1].x*scale ,notPlottedPoint[notPlottedPoint.length -1].y*scale);
+                    ctx.stroke();   
+                }
+                // console.log(pointlist[p][0], pointlist[p][1])
+            }
+            if (notPlottedPoint.length > 2){
+                var ctx = document.getElementById("canvas").getContext("2d");
+                // ctx.putImageData(notPlottedPoint[notPlottedPoint.length-1].postDotData, 0, 0);
+                ctx.beginPath();
+                ctx.strokeStyle = color;
+                ctx.lineWidth=2;
+                ctx.moveTo(notPlottedPoint[notPlottedPoint.length -1].x*scale,notPlottedPoint[notPlottedPoint.length -1].y*scale);
+                ctx.lineTo(notPlottedPoint[0].x*scale,notPlottedPoint[0].y*scale);
+                ctx.stroke();
+                var uplList = [];
+                for(i=0;i<notPlottedPoint.length;i++){
+                    delete notPlottedPoint[i].imageData
+                    delete notPlottedPoint[i].postDotData
+                    // console.log('Shortened',notPlottedPoint)
+
+                }
+                point_minx= minx(notPlottedPoint);
+                point_miny= miny(notPlottedPoint);
+                polygonList.push({
+                    'min_x':minx(notPlottedPoint),
+                    'min_y':miny(notPlottedPoint), 
+                    'max_x':maxx(notPlottedPoint),
+                    'max_y':maxy(notPlottedPoint),
+                    'scale':scale,
+                    'imgWidth':metaImage.w,
+                    'imgHeight':metaImage.h,
+                    'pointList': notPlottedPoint,
+                    'name':currFile,
+                    'label':bb_label
+                });
+                notPlottedPoint = [];
+                console.log(228,polygonList)
+                generateBBList(polygonList)
+                document.getElementById(String(lbl_index)).value = bb_label;
+                ctx.fillText(bb_label,point_minx*scale,point_miny*scale)
+                console.log(polygonList)
+            }
+        }
+        // Getting App Data from Backend
+        var data = {{ data|tojson}};
+        console.log(data)
+        //Creting File List
+        function CreateList(){
+            var res = '';
+            // console.log(data)
+            for(index =0; index<data.fileNames.length;index++ ){
+                res += '<div class="row rowItem" >';
+                res += '<div class="row" ><div onclick="loadImage(\''+data.fileNames[index]+'\',\''+index+'\');" class="col-sm-10 highlight" style="padding:5px"><b>Name</b> : '+data.fileNames[index].slice(8,data.fileNames[index].length)+'</div>';
+                res += '<div class="col-sm-2 text-center"><a class="confirmation" href="/delete/'+data.fileNames[index]+'"><i class="fas fa-trash-alt"></i></a></div></div>';
+                res += '<input type="hidden" value="{{photo}}"></div>';
+            }
+            document.getElementById("photoList").innerHTML = res;
+            var elems = document.getElementsByClassName('confirmation');
+            var confirmIt = function (e) {
+                if (!confirm('Are you sure you want to delete the file?')) e.preventDefault();
+            };
+            for (var i = 0, l = elems.length; i < l; i++) {
+                elems[i].addEventListener('click', confirmIt, false);
+            }
+            console.log(elems)
+            // console.log(res)
+        }
+        
+        function tempLine(event){
+            console.log('Hovering!!!')
+            document.getElementById("canvas").getContext("2d").putImageData(notPlottedPoint[notPlottedPoint.length-1].postDotData, 0, 0);
+            var rect = canvas.getBoundingClientRect();
+            var x = event.clientX - rect.left;
+            var y = event.clientY - rect.top;
+            var ctx = document.getElementById("canvas").getContext("2d");
+            
+            var b = canvas.getBoundingClientRect();
+            var scale = canvas.width / parseFloat(b.width);
+
+            ctx.fillStyle = "#ff2626"; // Red color
+            // notPlottedPoint.push({'x':x,'y':y})
+            ctx.beginPath();
+            ctx.strokeStyle = 'blue';
+            ctx.moveTo(notPlottedPoint[notPlottedPoint.length -1].x*scale,notPlottedPoint[notPlottedPoint.length -1].y*scale);
+            ctx.lineTo(x*scale, y*scale);
+            ctx.stroke();
+
+        }
+        // Drawing Points On image
+        var canvas = document.querySelector('canvas');
+        canvas.addEventListener('click', event=>{
+            getPosition(event)
+        });
+        canvas.addEventListener('mousemove', event=>{
+            if(notPlottedPoint.length > 0){
+                tempLine(event)
+            }
+        });
+        var pointSize = 2;
+
+        function getPosition(event){
+            var rect = canvas.getBoundingClientRect();
+            var x = event.clientX - rect.left;
+            var y = event.clientY - rect.top;
+            console.log(rect.left, event.clientX,rect.top, event.layer)
+                
+            drawCoordinates(x,y);
+        }
+
+        function drawCoordinates(x,y){	
+            var ctx = document.getElementById("canvas").getContext("2d");
+            
+            var b = canvas.getBoundingClientRect();
+            var scale = canvas.width / parseFloat(b.width);
+
+            ctx.fillStyle = "#ff2626"; // Red color
+            
+            var pastData=    {'x':x,'y':y, 'imageData':ctx.getImageData(0,0,canvas.width,canvas.height)};
+            ctx.beginPath();
+            ctx.arc(x*scale, y*scale, pointSize, 0, Math.PI * 2, true);
+            ctx.fill();
+            // console.log(ratio)
+            pastData['postDotData']=ctx.getImageData(0,0,canvas.width,canvas.height);
+            notPlottedPoint.push(pastData);
+            console.log(notPlottedPoint,notPlottedPoint[0].imageData == notPlottedPoint[0].postDotData);
+        }
+        // On escape clear drawing
+        document.body.addEventListener("keydown", ({key}) => {
+            if (key === "Escape"){
+                console.log('Escaping!!')
+                if (notPlottedPoint.length != 0){
+                    document.getElementById("canvas").getContext("2d").putImageData(notPlottedPoint[notPlottedPoint.length-1].imageData, 0, 0);
+                    notPlottedPoint.pop();
+                }
+            }
+        })
+
+        document.body.addEventListener("keydown", ({key}) => {
+            if (key === "Enter"){
+                console.log('Completing the polygon!!')
+                if (notPlottedPoint.length > 2){
+
+                    var b = canvas.getBoundingClientRect();
+                    var scale = canvas.width / parseFloat(b.width);
+
+                    var ctx = document.getElementById("canvas").getContext("2d");
+                    ctx.putImageData(notPlottedPoint[notPlottedPoint.length-1].postDotData, 0, 0);
+                    ctx.beginPath();
+                    ctx.strokeStyle = 'blue';
+                    ctx.moveTo(notPlottedPoint[notPlottedPoint.length -1].x*scale,notPlottedPoint[notPlottedPoint.length -1].y*scale);
+                    ctx.lineTo(notPlottedPoint[0].x*scale,notPlottedPoint[0].y*scale);
+                    ctx.stroke();
+                    var uplList = [];
+                    for(i=0;i<notPlottedPoint.length;i++){
+                        delete notPlottedPoint[i].imageData
+                        delete notPlottedPoint[i].postDotData
+                        // console.log('Shortened',notPlottedPoint)
+
+                    }
+                    polygonList.push({
+                        'min_x':minx(notPlottedPoint),
+                        'min_y':miny(notPlottedPoint), 
+                        'max_x':maxx(notPlottedPoint),
+                        'max_y':maxy(notPlottedPoint),
+                        'scale':scale,
+                        'imgWidth':metaImage.w,
+                        'imgHeight':metaImage.h,
+                        'pointList': notPlottedPoint,
+                        'name':currFile
+                    });
+                    savedChanges = false;
+                    notPlottedPoint = [];
+                    console.log(228,polygonList)
+                    generateBBList(polygonList)
+                }
+            }
+        })
+        
+        
+        function generateBBList(data){
+            var res = '';
+            res += "<ol>";
+            for (let i = 0; i < data.length; i++) {
+                var pointData = data[i];
+                res += '<li>Label : <input type="text" class="labels" style="margin-top: 5px;width: 170px;" id='+String(i)+' onkeyup="addLabel(this)">';
+                res += '<ul>';
+                for (let k = 0; k < pointData.pointList.length; k++) {
+                    var point =  pointData.pointList[k];
+                    res += '<li>Point '+String(k+1)+': X = '+String(point.x)+', Y ='+String(point.y)+'</li>'
+                }
+                res+='</ul>'           
+            }
+            res+='</li></ol>'
+            document.getElementById('bbList').innerHTML=res;
+            document.getElementById('submit').innerHTML='<div class="row bbSubmit" id="saveChanges"><input type="submit" onclick="saveData()"/><input type="hidden" id="savedData"/></div>';
+            document.getElementById('savedData').value = JSON.stringify(polygonList);
+            for (let i = 0; i < data.length; i++) {
+                console.log('label')
+                if (data[i].label){
+                console.log('label',data[i].label)
+                    document.getElementById(String(i)).value = data[i].label
+                }
+            }
+            console.log('Upload Data',polygonList)
+        }
+        
+        function minx(a){
+            var temp = [];
+            for(i=0;i<a.length;i++){
+                temp.push(a[i].x)
+            }
+            return Math.min(...temp)
+        }
+        function miny(a){
+            var temp = [];
+            for(i=0;i<a.length;i++){
+                temp.push(a[i].y)
+            }
+            return Math.min(...temp)
+        }
+        function maxy(a){
+            var temp = [];
+            for(i=0;i<a.length;i++){
+                temp.push(a[i].y)
+            }
+            var max =temp.reduce(function(a, b) {
+                return Math.max(a, b);
+            }, 0);
+            return max
+        }
+        function maxx(a){
+            var temp = [];
+            for(i=0;i<a.length;i++){
+                temp.push(a[i].x)
+            }
+            var max =temp.reduce(function(a, b) {
+                return Math.max(a, b);
+            }, 0);
+            return max
+        }
+        function addLabel(t){
+            polygonList[String(t.id)].label=t.value;
+            document.getElementById('savedData').value = JSON.stringify(polygonList);
+            // console.log(polygonList)
+        }
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+        function saveData()
+        {
+            var elems = document.getElementsByClassName('labels');
+            console.log(elems)
+            for (var i = 0, l = elems.length; i < l; i++) {
+                if (!(elems[i].value)){
+                    alert('To save enter label for Bounding box #'+(i+1))
+                    elems[i].style.border = '1 px solid red';
+                    return elems
+
+                }
+            }
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", "/save", true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(JSON.stringify({
+                value: JSON.stringify(document.getElementById('savedData').value)
+            }));
+            xhr.onload = function() {
+                console.log(this.responseText);
+                var data = JSON.parse(this.responseText);
+                if (data.code == 200){
+                    savedChanges = true
+                }
+            }
+            // window.post = function() {
+            //     return fetch('/save', {method: "POST", body: JSON.stringify(document.getElementById('sendData').value)});
+            // }
+        }
+    </script>
+</body>  
+</html>
