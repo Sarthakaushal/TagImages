@@ -1,6 +1,6 @@
 from re import split
 from flask import * 
-import os, demjson
+import os, demjson, base64
 app = Flask(__name__)  
 
 CUR_DIR = os.getcwd();
@@ -20,6 +20,7 @@ def renderHome():
                     with open(CUR_DIR+'/static/bbData/'+data[index].split('.')[0]+'_frontendData.json') as file:
                         lines = file.readlines()
                         content['labels'].append(lines)
+                        file.close()
                 except:
                     content['labels'].append('')
         os.chdir(CUR_DIR)
@@ -43,6 +44,36 @@ def deleteMedia(deviceId):
     os.remove(deviceId)
     return redirect("/")
 
+@app.route('/label/delete/uploads/<fileName>/<labelIndex>')
+def labelDelete(fileName, labelIndex):
+    # print('static/imageLabels/'+fileName[:-5]+'.json')
+    with open('static/imageLabels/'+fileName[:-4]+'.json','r') as fp:
+        lines = fp.readlines()
+        # print(lines)
+        fp.close()
+    
+    data = json.loads(lines[0])
+    del data['shapes'][int(labelIndex)]
+    # print('==>>', data['shapes'])
+
+    with open('static/imageLabels/'+fileName[:-4]+'.json', "w") as outfile:
+        json.dump(data, outfile)
+        outfile.close()
+    
+    with open('static/bbData/'+fileName[:-4]+'_frontendData.json','r') as fp:
+        lines = fp.readlines()
+        # print(lines)
+        fp.close()
+    
+    data = json.loads(lines[0])
+    del data[int(labelIndex)]
+    # print('==>>', data['shapes'])
+
+    with open('static/bbData/'+fileName[:-4]+'_frontendData.json', "w") as outfile:
+        json.dump(data, outfile)
+        outfile.close()
+    # print(data)
+    return redirect('/')
 # Save BB List & frontend Points
 @app.route('/save', methods = ['POST'])
 def save():
@@ -62,9 +93,11 @@ def save():
         # print('/n BB Details',bb_deteails)
         # Adding Data
         # print(out_data)
-        out_data['name']= data[0]['name']
+        # out_data['name']= data[0]['name']
         out_data['imageHeight']= data[0]['imgHeight']
-        out_data['imageWidtht']= data[0]['imgWidth']
+        out_data['imageWidth']= data[0]['imgWidth']
+        out_data['imagePath'] = '.. /static/uploads/'+data[0]['name'][8:]
+        out_data['imageData'] = base64.b64encode(open('static/uploads/'+data[0]['name'][8:], "rb").read()).decode('utf-8')
         for i in range(0,len(data)):
             bb_deteails = data[i]
             print(bb_deteails)
@@ -76,13 +109,28 @@ def save():
         with open('static/imageLabels/'+bb_deteails['name'][8:].split('.')[0]+'.json','w') as f:
             f.write(json.dumps(out_data))
             f.close()
-        print(out_data)
+        print(out_data.keys())
             
         print('Saveing frontend Data!!!')
         with open((CUR_DIR+'/static/bbData/'+(data[0]['name'])[8:]).split('.')[0]+'_frontendData.json', "w") as outfile:
             outfile.write(json.dumps(data))
             outfile.close()
-        return jsonify({'code':200})
+        os.chdir(CUR_DIR+'/static/uploads')
+        data = os.listdir()
+        content = {'fileNames':[],'labels':[]}
+        for index in range(0,len(data)):
+            if data[index].split('.')[-1] in ['png','jpg','jpeg']:
+                # print('uploads/'+data[index])
+                content["fileNames"].append('uploads/'+data[index])
+                try:
+                    with open(CUR_DIR+'/static/bbData/'+data[index].split('.')[0]+'_frontendData.json') as file:
+                        lines = file.readlines()
+                        content['labels'].append(lines)
+                        file.close()
+                except:
+                    content['labels'].append('')
+        os.chdir(CUR_DIR)
+        return jsonify({'code':200, 'content':content})
 
 def getDirImages():
     os.chdir(CUR_DIR+'/static/uploads/')

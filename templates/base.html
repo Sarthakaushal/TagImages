@@ -43,13 +43,16 @@
                 <canvas class="canvas" id="canvas" style="width: 100%;">
                     <p>Add suitable fallback here.</p>
                 </canvas>
+                <a id="fileDownloader" download>
+                    <input type="button" onclick="to_image()" value="Download Image">
+                </a>
             </div>
             <!-- View BB Points Area -->
             <div class="col-sm-3 content-border" style="border-right: none;padding-right: 0px;">
                 <div class="row" style="width: 104%;">
                     <h4 style="width: 100%;"><i class="far fa-square"></i>Bouding Box List</h4>
                 </div>
-                <div id="bbList" class="row" style="margin-left: 0%;max-height: 53vw;overflow-y: scroll;">                </div>
+                <div id="bbList" class="row" style="margin-left: 0%;max-height: 38vw;overflow-y: scroll;">                </div>
                 <div id='submit'></div>                
             </div>
         </div>
@@ -64,15 +67,24 @@
         var incomplete = true;
         var metaImage ={'h':null,'w':null}
         var savedChanges = true;
-
+        var fileIndex = null;
+        var defaultImg= {'height':null,'width':null,'width_scale':null, 'height_scale':null}
         // Load Image on Canvas
+        if (localStorage.getItem("fileName")){
+            loadImage(localStorage.getItem("fileName"), localStorage.getItem("index"))
+        }
         function loadImage(fileName,index) {
+            fileIndex = index;
             if (!savedChanges){
                 if (!(confirm('Do want to load the next image without saving changes to current image?'))){
                     return true
                 }else{
                     savedChanges = true
                 }
+            }
+            if (typeof(Storage) !== "undefined"){
+                localStorage.setItem("fileName", fileName);
+                localStorage.setItem("index", index);
             }
             var canvas = document.getElementById("canvas");
             var ctx = canvas.getContext("2d");
@@ -88,22 +100,23 @@
                 canvas.width *= dpi
                 metaImage.h = img.height
                 metaImage.w = img.width
-
-                // step 1 - resize to 50%
                 var oc = document.createElement('canvas'),
                     octx = oc.getContext('2d');
-
-                oc.width = img.width * 0.5;
-                oc.height = img.height * 0.5;
+                defaultImg.width = img.width
+                defaultImg.height = img.height
+                defaultImg.width_scale = img.width/canvas.getBoundingClientRect().width
+                defaultImg.height_scale = img.height/canvas.getBoundingClientRect().height
+                oc.width = img.width * 1;
+                oc.height = img.height * 1;
                 ratio = .25
-
+                console.log(oc.width, oc.height, canvas.width, canvas.height)
                 octx.drawImage(img, 0, 0, oc.width, oc.height);
 
                 // step 2
-                octx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5);
+                octx.drawImage(oc, 0, 0, oc.width * 1, oc.height * 1);
 
                 // step 3, resize to final size
-                ctx.drawImage(oc, 0, 0, oc.width * 0.5, oc.height * 0.5,
+                ctx.drawImage(oc, 0, 0, oc.width * 1, oc.height * 1,
                 0, 0, canvas.width, canvas.height);
                 if(data.labels[index]!=''){
                     draw_populate_poly(index)
@@ -115,14 +128,14 @@
         //Draw polygon and populate the polygon list
         function draw_populate_poly(index){
             var _data = JSON.parse(data.labels[index]);
-            console.log(_data.length,_data)
+            // console.log(_data.length,_data)
             len = _data.length;
             for(_p=0; _p<len ;_p++){
-                console.log(_p)
-                console.log(_data[_p])
+                // console.log(_p)
+                // console.log(_data[_p])
                 draw_poly(_data[_p].pointList,_data[_p].scale, _data[_p].label, _p);
             }
-            // console.log(_data)
+            // // console.log(_data)
         }
         function draw_poly(pointlist,scale_recorded,bb_label,lbl_index){
             var canvas = document.getElementById("canvas");
@@ -131,7 +144,7 @@
             var color = getRandomColor()
             //List containing list of coordinates
             for(p=0;p< pointlist.length;p++){
-                // console.log(pointlist[p].x, pointlist[p].y)
+                // // console.log(pointlist[p].x, pointlist[p].y)
                 drawCoordinates(pointlist[p].x, pointlist[p].y)
                 if (notPlottedPoint.length>1){
                     var ctx = document.getElementById("canvas").getContext("2d");
@@ -141,7 +154,7 @@
                     ctx.lineTo(notPlottedPoint[notPlottedPoint.length -1].x*scale ,notPlottedPoint[notPlottedPoint.length -1].y*scale);
                     ctx.stroke();   
                 }
-                // console.log(pointlist[p][0], pointlist[p][1])
+                // // console.log(pointlist[p][0], pointlist[p][1])
             }
             if (notPlottedPoint.length > 2){
                 var ctx = document.getElementById("canvas").getContext("2d");
@@ -156,7 +169,7 @@
                 for(i=0;i<notPlottedPoint.length;i++){
                     delete notPlottedPoint[i].imageData
                     delete notPlottedPoint[i].postDotData
-                    // console.log('Shortened',notPlottedPoint)
+                    // // console.log('Shortened',notPlottedPoint)
 
                 }
                 point_minx= minx(notPlottedPoint);
@@ -174,20 +187,20 @@
                     'label':bb_label
                 });
                 notPlottedPoint = [];
-                console.log(228,polygonList)
+                // console.log(228,polygonList)
                 generateBBList(polygonList)
                 document.getElementById(String(lbl_index)).value = bb_label;
                 ctx.fillText(bb_label,point_minx*scale,point_miny*scale)
-                console.log(polygonList)
+                // console.log(polygonList)
             }
         }
         // Getting App Data from Backend
         var data = {{ data|tojson}};
-        console.log(data)
+        // console.log(data)
         //Creting File List
         function CreateList(){
             var res = '';
-            // console.log(data)
+            // // console.log(data)
             for(index =0; index<data.fileNames.length;index++ ){
                 res += '<div class="row rowItem" >';
                 res += '<div class="row" ><div onclick="loadImage(\''+data.fileNames[index]+'\',\''+index+'\');" class="col-sm-10 highlight" style="padding:5px"><b>Name</b> : '+data.fileNames[index].slice(8,data.fileNames[index].length)+'</div>';
@@ -202,12 +215,12 @@
             for (var i = 0, l = elems.length; i < l; i++) {
                 elems[i].addEventListener('click', confirmIt, false);
             }
-            console.log(elems)
-            // console.log(res)
+            // console.log(elems)
+            // // console.log(res)
         }
         
         function tempLine(event){
-            console.log('Hovering!!!')
+            // console.log('Hovering!!!')
             document.getElementById("canvas").getContext("2d").putImageData(notPlottedPoint[notPlottedPoint.length-1].postDotData, 0, 0);
             var rect = canvas.getBoundingClientRect();
             var x = event.clientX - rect.left;
@@ -236,13 +249,22 @@
                 tempLine(event)
             }
         });
+        window.addEventListener('beforeunload', function (e) {
+            if (!savedChanges){
+                e.preventDefault();
+                e.returnValue = 'Labe';
+            }
+            // alert('Do you want to close tab?')
+        });
         var pointSize = 2;
 
         function getPosition(event){
             var rect = canvas.getBoundingClientRect();
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
-            console.log(rect.left, event.clientX,rect.top, event.layer)
+            console.log(defaultImg, rect)
+
+            console.log(x*defaultImg.width/rect.width, y*defaultImg.height/rect.height)
                 
             drawCoordinates(x,y);
         }
@@ -259,15 +281,15 @@
             ctx.beginPath();
             ctx.arc(x*scale, y*scale, pointSize, 0, Math.PI * 2, true);
             ctx.fill();
-            // console.log(ratio)
+            // // console.log(ratio)
             pastData['postDotData']=ctx.getImageData(0,0,canvas.width,canvas.height);
             notPlottedPoint.push(pastData);
-            console.log(notPlottedPoint,notPlottedPoint[0].imageData == notPlottedPoint[0].postDotData);
+            // // console.log(notPlottedPoint,notPlottedPoint[0].imageData == notPlottedPoint[0].postDotData);
         }
         // On escape clear drawing
         document.body.addEventListener("keydown", ({key}) => {
             if (key === "Escape"){
-                console.log('Escaping!!')
+                // console.log('Escaping!!')
                 if (notPlottedPoint.length != 0){
                     document.getElementById("canvas").getContext("2d").putImageData(notPlottedPoint[notPlottedPoint.length-1].imageData, 0, 0);
                     notPlottedPoint.pop();
@@ -277,7 +299,7 @@
 
         document.body.addEventListener("keydown", ({key}) => {
             if (key === "Enter"){
-                console.log('Completing the polygon!!')
+                // console.log('Completing the polygon!!')
                 if (notPlottedPoint.length > 2){
 
                     var b = canvas.getBoundingClientRect();
@@ -294,7 +316,7 @@
                     for(i=0;i<notPlottedPoint.length;i++){
                         delete notPlottedPoint[i].imageData
                         delete notPlottedPoint[i].postDotData
-                        // console.log('Shortened',notPlottedPoint)
+                        // // console.log('Shortened',notPlottedPoint)
 
                     }
                     polygonList.push({
@@ -310,7 +332,7 @@
                     });
                     savedChanges = false;
                     notPlottedPoint = [];
-                    console.log(228,polygonList)
+                    // console.log(228,polygonList)
                     generateBBList(polygonList)
                 }
             }
@@ -319,31 +341,50 @@
         
         function generateBBList(data){
             var res = '';
-            res += "<ol>";
+            res += "<div class='col-sm12' style='width:100%;height: 73vh;overflow-y: scroll;'><ol>";
             for (let i = 0; i < data.length; i++) {
                 var pointData = data[i];
-                res += '<li>Label : <input type="text" class="labels" style="margin-top: 5px;width: 170px;" id='+String(i)+' onkeyup="addLabel(this)">';
+                res += '<div class="row"><div class="col-sm-9"><li>Label : <input type="text" class="labels" style="margin-top: 5px;width: 170px;" id='+String(i)+' onkeyup="addLabel(this)">';
                 res += '<ul>';
                 for (let k = 0; k < pointData.pointList.length; k++) {
                     var point =  pointData.pointList[k];
                     res += '<li>Point '+String(k+1)+': X = '+String(point.x)+', Y ='+String(point.y)+'</li>'
                 }
-                res+='</ul>'           
+                res+='</ul></div>'
+                res+='<div class="col-sm-3"><a href="/label/delete/'+currFile+'/'+String(i)+'"><i class="far fa-trash-alt"></i></a></div></div>'           
             }
-            res+='</li></ol>'
+            res+='</ol></div>'
             document.getElementById('bbList').innerHTML=res;
             document.getElementById('submit').innerHTML='<div class="row bbSubmit" id="saveChanges"><input type="submit" onclick="saveData()"/><input type="hidden" id="savedData"/></div>';
             document.getElementById('savedData').value = JSON.stringify(polygonList);
             for (let i = 0; i < data.length; i++) {
-                console.log('label')
+                // console.log('label')
                 if (data[i].label){
-                console.log('label',data[i].label)
+                // console.log('label',data[i].label)
                     document.getElementById(String(i)).value = data[i].label
                 }
             }
-            console.log('Upload Data',polygonList)
-        }
-        
+            // console.log('Upload Data',polygonList)
+        }       
+        // function deleteLabel(index){
+            // toDelete = JSON.parse(data.labels[index])
+        //         if (currFile == data.fileNames[i]){
+        //             _result = JSON.parse(data.labels[i])
+        //             // console.log(_result[index].label)
+        //             pre_res =  _result.slice(0,index)
+        //             post_res = _result.slice(index+1,_result.length)
+        //             for(j=0;j<post_res.length;j++){
+        //                 pre_res.push(post_res[i])
+        //             }
+        //             // _result = _result.filter( a => a.label !==_result[index].label )
+        //             // console.log(pre_res)
+        //             data.labels[i][index] = JSON.stringify(pre_res)
+        //             // console.log(_result)
+        //             loadImage(currFile,i)
+        //         }
+        //     }
+        //     savedChanges = false
+        // }
         function minx(a){
             var temp = [];
             for(i=0;i<a.length;i++){
@@ -381,7 +422,8 @@
         function addLabel(t){
             polygonList[String(t.id)].label=t.value;
             document.getElementById('savedData').value = JSON.stringify(polygonList);
-            // console.log(polygonList)
+            savedChanges = false
+            // // console.log(polygonList)
         }
         function getRandomColor() {
             var letters = '0123456789ABCDEF';
@@ -391,10 +433,9 @@
             }
             return color;
         }
-        function saveData()
-        {
+        function saveData(){
             var elems = document.getElementsByClassName('labels');
-            console.log(elems)
+            // console.log(elems)
             for (var i = 0, l = elems.length; i < l; i++) {
                 if (!(elems[i].value)){
                     alert('To save enter label for Bounding box #'+(i+1))
@@ -403,23 +444,52 @@
 
                 }
             }
+            
             var xhr = new XMLHttpRequest();
-            xhr.open("POST", "/save", true);
+            xhr.open("POST", "/save", false);
             xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.onload = function() {
+                if (xhr.status == 200){
+                    // var _data= 
+                    var _data = JSON.parse(xhr.responseText);
+                    savedChanges = true
+                    // console.log('Hit successfull', data,_data['content'])
+                    data = _data['content']
+                    loadImage(currFile,fileIndex)
+                }
+            }
             xhr.send(JSON.stringify({
                 value: JSON.stringify(document.getElementById('savedData').value)
             }));
-            xhr.onload = function() {
-                console.log(this.responseText);
-                var data = JSON.parse(this.responseText);
-                if (data.code == 200){
-                    savedChanges = true
-                }
-            }
             // window.post = function() {
             //     return fetch('/save', {method: "POST", body: JSON.stringify(document.getElementById('sendData').value)});
             // }
         }
+        function to_image(){
+            var old_res = canvas.toDataURL("image/png")
+            var new_res = new Image()
+            new_res.onload = function(){
+                var canvas_big = document.createElement('canvas')
+                canvas_big.width = defaultImg.width
+                canvas_big.height = defaultImg.height
+                canvas_big.getContext('2d').drawImage(new_res, 0,0, canvas_big.width, canvas_big.height)
+                var image = canvas_big.toDataURL("image/png").replace("image/png", "image/octet-stream");  // here is the most important part because if you dont replace you will get a DOM 18 exception.
+                window.location.href=image;
+            }
+            new_res.src = old_res 
+        }
+        document.getElementById('fileDownloader').href = '/static/imageLabels/'+((currFile.split('/'))[currFile.split('/').length -1]).split('.')[0]+'.json'
+        canvas.resizeAndExport = function(width, height){
+            // create a new canvas
+            var c = document.createElement('canvas');
+            // set its width&height to the required ones
+            c.width = width;
+            c.height = height;
+            // draw our canvas to the new one
+            c.getContext('2d').drawImage(this, 0,0,this.width, this.height, 0,0,width, height);
+            // return the resized canvas dataURL
+            return c.toDataURL();
+            }
     </script>
 </body>  
 </html>
