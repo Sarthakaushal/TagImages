@@ -62,3 +62,7 @@ i {
     border-top: 1px #80808091 solid;
     padding-top: 2vh;
 }
+/* canvas { 
+    image-rendering: pixelated; 
+    image-rendering: optimizespeed; 
+} */
