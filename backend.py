@@ -47,33 +47,36 @@ def deleteMedia(deviceId):
 @app.route('/label/delete/uploads/<fileName>/<labelIndex>')
 def labelDelete(fileName, labelIndex):
     # print('static/imageLabels/'+fileName[:-5]+'.json')
-    with open('static/imageLabels/'+fileName[:-4]+'.json','r') as fp:
-        lines = fp.readlines()
-        # print(lines)
-        fp.close()
-    
-    data = json.loads(lines[0])
-    del data['shapes'][int(labelIndex)]
-    # print('==>>', data['shapes'])
+    try:
+        with open('static/imageLabels/'+fileName[:-4]+'.json','r') as fp:
+            lines = fp.readlines()
+            # print(lines)
+            fp.close()
+        
+        data = json.loads(lines[0])
+        del data['shapes'][int(labelIndex)]
+        # print('==>>', data['shapes'])
 
-    with open('static/imageLabels/'+fileName[:-4]+'.json', "w") as outfile:
-        json.dump(data, outfile)
-        outfile.close()
-    
-    with open('static/bbData/'+fileName[:-4]+'_frontendData.json','r') as fp:
-        lines = fp.readlines()
-        # print(lines)
-        fp.close()
-    
-    data = json.loads(lines[0])
-    del data[int(labelIndex)]
-    # print('==>>', data['shapes'])
+        with open('static/imageLabels/'+fileName[:-4]+'.json', "w") as outfile:
+            json.dump(data, outfile)
+            outfile.close()
+        
+        with open('static/bbData/'+fileName[:-4]+'_frontendData.json','r') as fp:
+            lines = fp.readlines()
+            # print(lines)
+            fp.close()
+        
+        data = json.loads(lines[0])
+        del data[int(labelIndex)]
+        # print('==>>', data['shapes'])
 
-    with open('static/bbData/'+fileName[:-4]+'_frontendData.json', "w") as outfile:
-        json.dump(data, outfile)
-        outfile.close()
-    # print(data)
-    return redirect('/')
+        with open('static/bbData/'+fileName[:-4]+'_frontendData.json', "w") as outfile:
+            json.dump(data, outfile)
+            outfile.close()
+        # print(data)
+        return redirect('/')
+    except:
+        return redirect('/')
 # Save BB List & frontend Points
 @app.route('/save', methods = ['POST'])
 def save():
@@ -105,11 +108,11 @@ def save():
             out_data['shapes'][i]['label']= bb_deteails['label']
             for k in range(0,len(bb_deteails['pointList'])):
                 point = bb_deteails['pointList'][k]
-                out_data['shapes'][i]['points'].append([point['x'],point['y']])
+                out_data['shapes'][i]['points'].append([point['x']*bb_deteails['meta_ratio'],point['y']*bb_deteails['meta_ratio']])
         with open('static/imageLabels/'+bb_deteails['name'][8:].split('.')[0]+'.json','w') as f:
             f.write(json.dumps(out_data))
             f.close()
-        print(out_data.keys())
+        print(data)
             
         print('Saveing frontend Data!!!')
         with open((CUR_DIR+'/static/bbData/'+(data[0]['name'])[8:]).split('.')[0]+'_frontendData.json', "w") as outfile:
